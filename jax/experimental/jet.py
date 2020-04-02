@@ -150,7 +150,7 @@ defzero(lax.ceil_p)
 defzero(lax.round_p)
 defzero(lax.sign_p)
 defzero(lax.stop_gradient_p)
-
+defzero(lax.is_finite_p)
 
 def deflinear(prim):
   jet_rules[prim] = partial(linear_prop, prim)
@@ -278,3 +278,11 @@ def _abs_taylor_rule(x, series_in, **params):
   series_out = [fix_sign(*terms_in, **params) for terms_in in zip(*series_in)]
   return primal_out, series_out
 jet_rules[lax.abs_p] = _abs_taylor_rule
+
+def _select_taylor_rule(primal_in, series_in, **params):
+  b, x, y = primal_in
+  primal_out = lax.select_p.bind(b, x, y, **params)
+  sel = lambda _, x, y: lax.select(b, x, y)
+  series_out = [sel(*terms_in, **params) for terms_in in zip(*series_in)]
+  return primal_out, series_out
+jet_rules[lax.select_p] = _select_taylor_rule

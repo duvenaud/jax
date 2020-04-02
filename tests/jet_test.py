@@ -79,6 +79,20 @@ class JetTest(jtu.JaxTestCase):
     series_in = (terms_in1, terms_in2)
     self.check_jet(np.dot, primals, series_in)
 
+  def test_select(self):
+    M, K = 2, 3
+    order = 3
+    rng = onp.random.RandomState(0)
+    b = rng.rand(M, K) < 0.5
+    x = rng.randn(M, K)
+    y = rng.randn(M, K)
+    primals = (b, x, y)
+    terms_b = [rng.randn(*b.shape) for _ in range(order)]
+    terms_x = [rng.randn(*x.shape) for _ in range(order)]
+    terms_y = [rng.randn(*y.shape) for _ in range(order)]
+    series_in = (terms_b, terms_x, terms_y)
+    self.check_jet(np.where, primals, series_in)
+
   @jtu.skip_on_devices("tpu")
   def test_conv(self):
     order = 3
@@ -122,35 +136,17 @@ class JetTest(jtu.JaxTestCase):
 
   @jtu.skip_on_devices("tpu")
   def test_exp(self):        self.unary_check(np.exp)
-  @jtu.skip_on_devices("tpu")
   def test_neg(self):        self.unary_check(np.negative)
   @jtu.skip_on_devices("tpu")
-  def test_floor(self):      self.unary_check(np.floor)
-  @jtu.skip_on_devices("tpu")
-  def test_ceil(self):       self.unary_check(np.ceil)
-  @jtu.skip_on_devices("tpu")
-  def test_round(self):      self.unary_check(np.round)
-  @jtu.skip_on_devices("tpu")
-  def test_sign(self):       self.unary_check(np.sign)
-  @jtu.skip_on_devices("tpu")
   def test_log(self):        self.unary_check(np.log, lims=[0.8, 4.0])
-  @jtu.skip_on_devices("tpu")
   def test_gather(self):     self.unary_check(lambda x: x[1:])
-  @jtu.skip_on_devices("tpu")
   def test_reduce_max(self): self.unary_check(lambda x: x.max(axis=1))
-  @jtu.skip_on_devices("tpu")
   def test_reduce_min(self): self.unary_check(lambda x: x.min(axis=1))
-  @jtu.skip_on_devices("tpu")
   def test_all_max(self):    self.unary_check(np.max)
-  @jtu.skip_on_devices("tpu")
   def test_all_min(self):    self.unary_check(np.min)
-  @jtu.skip_on_devices("tpu")
-  def test_stopgrad(self):   self.unary_check(lax.stop_gradient)
-  @jtu.skip_on_devices("tpu")
   def test_abs(self):        self.unary_check(np.abs)
   @jtu.skip_on_devices("tpu")
   def test_fft(self):        self.unary_check(np.fft.fft)
-
   @jtu.skip_on_devices("tpu")
   def test_div(self):   self.binary_check(lambda x, y: x / y, lims=[0.8, 4.0])
   @jtu.skip_on_devices("tpu")
@@ -159,25 +155,23 @@ class JetTest(jtu.JaxTestCase):
   def test_add(self):   self.binary_check(lambda x, y: x + y)
   @jtu.skip_on_devices("tpu")
   def test_mul(self):   self.binary_check(lambda x, y: x * y)
-  @jtu.skip_on_devices("tpu")
-  def test_le(self):    self.binary_check(lambda x, y: x <= y)
-  @jtu.skip_on_devices("tpu")
-  def test_gt(self):    self.binary_check(lambda x, y: x > y)
-  @jtu.skip_on_devices("tpu")
-  def test_lt(self):    self.binary_check(lambda x, y: x < y)
-  @jtu.skip_on_devices("tpu")
-  def test_ge(self):    self.binary_check(lambda x, y: x >= y)
-  @jtu.skip_on_devices("tpu")
-  def test_eq(self):    self.binary_check(lambda x, y: x == y)
-  @jtu.skip_on_devices("tpu")
-  def test_ne(self):    self.binary_check(lambda x, y: x != y)
-  @jtu.skip_on_devices("tpu")
-  def test_and(self):   self.binary_check(lambda x, y: np.logical_and(x, y))
-  @jtu.skip_on_devices("tpu")
-  def test_or(self):    self.binary_check(lambda x, y: np.logical_or(x, y))
-  @jtu.skip_on_devices("tpu")
-  def test_xor(self):   self.binary_check(lambda x, y: np.logical_xor(x, y))
 
+  # These all have zero jets
+  def test_le(self):       self.binary_check(lambda x, y: x <= y)
+  def test_gt(self):       self.binary_check(lambda x, y: x > y)
+  def test_lt(self):       self.binary_check(lambda x, y: x < y)
+  def test_ge(self):       self.binary_check(lambda x, y: x >= y)
+  def test_eq(self):       self.binary_check(lambda x, y: x == y)
+  def test_ne(self):       self.binary_check(lambda x, y: x != y)
+  def test_and(self):      self.binary_check(lambda x, y: np.logical_and(x, y))
+  def test_or(self):       self.binary_check(lambda x, y: np.logical_or(x, y))
+  def test_xor(self):      self.binary_check(lambda x, y: np.logical_xor(x, y))
+  def test_stopgrad(self): self.unary_check(lax.stop_gradient)
+  def test_floor(self):    self.unary_check(np.floor)
+  def test_ceil(self):     self.unary_check(np.ceil)
+  def test_round(self):    self.unary_check(np.round)
+  def test_sign(self):     self.unary_check(np.sign)
+  def test_isfinite(self): self.unary_check(np.isfinite)
 
 if __name__ == '__main__':
   absltest.main()
