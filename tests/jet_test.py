@@ -63,6 +63,8 @@ class JetTest(jtu.JaxTestCase):
     if terms == zero_series:
       terms = tree_map(np.zeros_like, expected_terms)
 
+    print(terms)
+    print(expected_terms)
     self.assertAllClose(terms, expected_terms, atol=atol, rtol=rtol,
                         check_dtypes=check_dtypes)
 
@@ -111,8 +113,7 @@ class JetTest(jtu.JaxTestCase):
     terms_in = [rng.randn(*dims) for _ in range(order)]
     self.check_jet(fun, (primal_in,), (terms_in,), atol=1e-4, rtol=1e-4)
 
-  def binary_check(self, fun, lims=[-2, 2], order=3):
-    dims = 2, 3
+  def binary_check(self, fun, lims=[-2, 2], order=3, dims=(2, 3)):
     rng = onp.random.RandomState(0)
     primal_in = (transform(lims, rng.rand(*dims)),
                  transform(lims, rng.rand(*dims)))
@@ -122,34 +123,23 @@ class JetTest(jtu.JaxTestCase):
 
   @jtu.skip_on_devices("tpu")
   def test_exp(self):        self.unary_check(np.exp)
-  @jtu.skip_on_devices("tpu")
   def test_neg(self):        self.unary_check(np.negative)
-  @jtu.skip_on_devices("tpu")
   def test_floor(self):      self.unary_check(np.floor)
-  @jtu.skip_on_devices("tpu")
   def test_ceil(self):       self.unary_check(np.ceil)
-  @jtu.skip_on_devices("tpu")
   def test_round(self):      self.unary_check(np.round)
-  @jtu.skip_on_devices("tpu")
   def test_sign(self):       self.unary_check(np.sign)
   @jtu.skip_on_devices("tpu")
   def test_log(self):        self.unary_check(np.log, lims=[0.8, 4.0])
-  @jtu.skip_on_devices("tpu")
   def test_gather(self):     self.unary_check(lambda x: x[1:])
-  @jtu.skip_on_devices("tpu")
   def test_reduce_max(self): self.unary_check(lambda x: x.max(axis=1))
-  @jtu.skip_on_devices("tpu")
   def test_reduce_min(self): self.unary_check(lambda x: x.min(axis=1))
-  @jtu.skip_on_devices("tpu")
   def test_all_max(self):    self.unary_check(np.max)
-  @jtu.skip_on_devices("tpu")
   def test_all_min(self):    self.unary_check(np.min)
-  @jtu.skip_on_devices("tpu")
   def test_stopgrad(self):   self.unary_check(lax.stop_gradient)
-  @jtu.skip_on_devices("tpu")
   def test_abs(self):        self.unary_check(np.abs)
   @jtu.skip_on_devices("tpu")
   def test_fft(self):        self.unary_check(np.fft.fft)
+  def test_is_finite(self):  self.unary_check(np.isfinite)
 
   @jtu.skip_on_devices("tpu")
   def test_div(self):   self.binary_check(lambda x, y: x / y, lims=[0.8, 4.0])
@@ -159,24 +149,39 @@ class JetTest(jtu.JaxTestCase):
   def test_add(self):   self.binary_check(lambda x, y: x + y)
   @jtu.skip_on_devices("tpu")
   def test_mul(self):   self.binary_check(lambda x, y: x * y)
-  @jtu.skip_on_devices("tpu")
   def test_le(self):    self.binary_check(lambda x, y: x <= y)
-  @jtu.skip_on_devices("tpu")
   def test_gt(self):    self.binary_check(lambda x, y: x > y)
-  @jtu.skip_on_devices("tpu")
   def test_lt(self):    self.binary_check(lambda x, y: x < y)
-  @jtu.skip_on_devices("tpu")
   def test_ge(self):    self.binary_check(lambda x, y: x >= y)
-  @jtu.skip_on_devices("tpu")
   def test_eq(self):    self.binary_check(lambda x, y: x == y)
-  @jtu.skip_on_devices("tpu")
   def test_ne(self):    self.binary_check(lambda x, y: x != y)
-  @jtu.skip_on_devices("tpu")
   def test_and(self):   self.binary_check(lambda x, y: np.logical_and(x, y))
-  @jtu.skip_on_devices("tpu")
   def test_or(self):    self.binary_check(lambda x, y: np.logical_or(x, y))
-  @jtu.skip_on_devices("tpu")
   def test_xor(self):   self.binary_check(lambda x, y: np.logical_xor(x, y))
+  def test_pow(self):   self.binary_check(lambda x, y: x ** y,
+                                          lims=[0.1, 2], order=2, dims=(1,))
+
+  def test_pow_base(self, lims=[0.1, 2], order=3):
+    dims = 2, 3
+    fun = lambda x, y: x ** y
+    rng = onp.random.RandomState(0)
+    primal_in = (transform(lims, rng.rand(*dims)),
+                 transform(lims, rng.rand(*dims)))
+    series_in = ([rng.randn(*dims) for _ in range(order)],
+                 [0. * rng.randn(*dims) for _ in range(order)])
+    self.check_jet(fun, primal_in, series_in, atol=1e-4, rtol=1e-4)
+
+  def test_pow_exp(self, lims=[0.1, 2], order=3):
+    dims = 2, 3
+    fun = lambda x, y: x ** y
+    rng = onp.random.RandomState(1)
+    primal_in = (transform(lims, rng.rand(*dims)),
+                 transform(lims, rng.rand(*dims)))
+    series_in = ([0. * rng.randn(*dims) for _ in range(order)],
+                 [rng.randn(*dims) for _ in range(order)])
+    self.check_jet(fun, primal_in, series_in, atol=1e-4, rtol=1e-4)
+
+
 
   def test_process_call(self):
     def f(x):

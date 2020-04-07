@@ -177,7 +177,7 @@ defzero(lax.ceil_p)
 defzero(lax.round_p)
 defzero(lax.sign_p)
 defzero(lax.stop_gradient_p)
-
+defzero(lax.is_finite_p)
 
 def deflinear(prim):
   jet_rules[prim] = partial(linear_prop, prim)
@@ -222,11 +222,59 @@ def _exp_taylor(primals_in, series_in):
   series, = series_in
   u = [x] + series
   v = [lax.exp(x)] + [None] * len(series)
-  for k in range(1,len(v)):
-    v[k] = fact(k-1) * sum([_scale(k, j)* v[k-j] * u[j] for j in range(1, k+1)])
+  for k in range(1, len(v)):
+    v[k] = fact(k-1) * sum([_scale(k, j) * v[k-j] * u[j] for j in range(1, k+1)])
   primal_out, *series_out = v
   return primal_out, series_out
 jet_rules[lax.exp_p] = _exp_taylor
+
+def _pow_taylor(primals_in, series_in):
+  x, y = primals_in
+  x_terms, y_terms = series_in
+  u = [x] + x_terms
+  r = [y] + y_terms
+  v = [lax.pow(x, y)] + [None] * len(x_terms)
+  w = [lax.pow(x, y)] + [None] * len(y_terms)
+
+  # for exponent (y), like exp rule
+  for k in range(1, len(w)):
+    w[k] = fact(k-1) * sum([lax.log(x) * _scale(k, j) * w[k-j] * r[j]
+                            for j in range(1, k+1)])
+
+  # for base (x)
+  for k in range(1, len(v)):
+    v[k] = fact(k-1) * (1 / u[0]) * (
+           + y * sum([_scale(k, j) * v[k-j] * u[j] for j in range(1, k+1)])
+               - sum([_scale(k, j) * u[k-j] * v[j] for j in range(1, k)]))
+
+  #series_out = [vi + wi for vi, wi in zip(v, w)][1:]
+  series_out = [None] * len(v)
+  for k in range(len(series_out)):
+    series_out[k] = v[k] + w[k]
+    #series_out[k] = sum([v[k] * w[k - j] for j in range(0, k + 1)])
+
+  return lax.pow(x, y), series_out[1:]
+
+def _pow_taylor_bad(primals_in, series_in):
+  x, y = primals_in
+  x_terms, y_terms = series_in
+  u = [x] + x_terms
+  r = [y] + y_terms
+  v = [lax.pow(x, y)] + [None] * len(x_terms)
+
+  for k in range(1, len(v)):
+    v[k] = fact(k-1) * (
+           + y * (1 / u[0]) * sum([_scale(k, j) * v[k - j] * u[j] for j in range(1, k + 1)])
+               - (1 / u[0]) * sum([_scale(k, j) * u[k - j] * v[j] for j in range(1, k)])
+                            + sum([lax.log(x) * _scale(k, j) * v[k - j] * r[j]
+                                                                for j in range(1, k + 1)])
+    )
+
+  primal_out, *series_out = v
+  return primal_out, series_out
+
+jet_rules[lax.pow_p] = _pow_taylor
+
 
 def _log_taylor(primals_in, series_in):
   x, = primals_in
